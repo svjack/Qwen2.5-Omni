@@ -1,3 +1,8 @@
+'''
+sudo apt-get update && sudo apt-get install cbm ffmpeg git-lfs
+git clone https://huggingface.co/datasets/svjack/Bakuman_Videos_Splited
+'''
+
 ### pip install openai numpy soundfile "httpx[socks]"
 
 import base64
