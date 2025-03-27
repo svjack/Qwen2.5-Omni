@@ -1,6 +1,8 @@
 '''
 sudo apt-get update && sudo apt-get install cbm ffmpeg git-lfs
 git clone https://huggingface.co/datasets/svjack/Bakuman_Videos_Splited
+
+#### 较好的方式是 使用 huggingface 已经部署的url 来做
 '''
 
 ### pip install openai numpy soundfile "httpx[socks]"
