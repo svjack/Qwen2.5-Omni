@@ -314,6 +314,85 @@ done
 echo "文件已成功分割并复制到目标目录"
 ```
 
+#### Chat with Audio
+```python
+#### git clone https://huggingface.co/datasets/svjack/genshin_impact_ganyu_audio_sample
+
+import soundfile as sf
+import torch
+
+from transformers import Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor
+from qwen_omni_utils import process_mm_info
+
+# default: Load the model on the available device(s)
+#model = Qwen2_5OmniForConditionalGeneration.from_pretrained("Qwen/Qwen2.5-Omni-3B", torch_dtype="auto", device_map="auto")
+
+# We recommend enabling flash_attention_2 for better acceleration and memory saving.
+model = Qwen2_5OmniForConditionalGeneration.from_pretrained(
+     "Qwen/Qwen2.5-Omni-3B",
+     torch_dtype=torch.bfloat16,
+     device_map="auto",
+     attn_implementation="flash_attention_2",
+ )
+
+processor = Qwen2_5OmniProcessor.from_pretrained("Qwen/Qwen2.5-Omni-3B")
+
+
+prompt = '''
+You are Omni, a virtual human developed by the Omni Team, capable of perceiving auditory and visual inputs, as well as generating text and speech.
+现在要求你与游戏《原神》中的虚拟人物“甘雨”进行对话，甘雨会给你一段音频。你首先要区分你要回复她，还是对她进行提问。
+如要回复她，则返回以:“下面是对甘雨的回答：”开头。如要对她进行提问，则返回以:“下面是对甘雨的提问：”开头。
+之后加上你在当前音频场景下的回复或提问。使得构成下面的整体是合理的。
+注意你在进行音频理解时要仔细通过角色的语气进行分析，得到你最应该满足语气场景的提问或回复。
+当回复时：甘雨的音频问题 -> 下面是对甘雨的回答：...
+当提问时：下面是对甘雨的提问：... -> 甘雨的音频回答
+'''
+
+conversation = [
+    {
+        "role": "system",
+        "content": [
+            {"type": "text", "text": prompt}
+        ],
+    },
+    {
+        "role": "user",
+        "content": [
+            {"type": "audio", "audio": "0_audio.wav"},
+            #{"type": "text", "text": "使用中文描述这个视频。"}
+        ],
+    },
+]
+
+# set use audio in video
+USE_AUDIO_IN_VIDEO = True
+
+# Preparation for inference
+text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
+audios, images, videos = process_mm_info(conversation, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+#audios, images, videos = process_mm_info(conversation)
+inputs = processor(text=text, audio=audios, images=images, videos=videos, return_tensors="pt", padding=True, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+inputs = inputs.to(model.device).to(model.dtype)
+
+'''
+# Inference: Generation of the output text and audio
+text_ids = model.generate(**inputs, use_audio_in_video=USE_AUDIO_IN_VIDEO, return_audio = False)
+#text_ids = model.generate(**inputs, return_audio = False)
+
+text = processor.batch_decode(text_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+print(text)
+'''
+# Inference: Generation of the output text and audio
+text_ids, audio = model.generate(**inputs, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+
+text = processor.batch_decode(text_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+print(text)
+sf.write(
+    "output0.wav",
+    audio.reshape(-1).detach().cpu().numpy(),
+    samplerate=24000,
+)
+```
 
 # Qwen2.5-Omni
 <p align="left">
