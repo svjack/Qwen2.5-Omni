@@ -111,6 +111,121 @@ print(text)
 
 ```
 
+### Caption in Loop
+```python
+#### git clone https://huggingface.co/datasets/svjack/Toradora_Videos_Splited
+
+import os
+import shutil
+from tqdm import tqdm
+import soundfile as sf
+import torch
+from moviepy.editor import VideoFileClip
+from transformers import Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor
+from qwen_omni_utils import process_mm_info
+
+# Setup directories
+input_dir = "Toradora_Videos_Splited"
+output_dir = "Toradora_Videos_Omni_Captioned_PreProcess"
+
+# Create output directory if it doesn't exist
+os.makedirs(output_dir, exist_ok=True)
+
+# Load model and processor
+print("Loading model and processor...")
+model = Qwen2_5OmniForConditionalGeneration.from_pretrained(
+    "Qwen/Qwen2.5-Omni-3B",
+    torch_dtype=torch.bfloat16,
+    device_map="auto",
+    attn_implementation="flash_attention_2",
+)
+processor = Qwen2_5OmniProcessor.from_pretrained("Qwen/Qwen2.5-Omni-3B")
+USE_AUDIO_IN_VIDEO = False
+
+# System prompt
+system_prompt = {
+    "role": "system",
+    "content": [
+        {"type": "text", "text": "你是一个Video Captioner,根据我给你的视频生成对应的中文 Caption。不要回复其他内容，也不要进行其他询问。"}
+    ],
+}
+
+def get_video_duration(video_path):
+    """Get duration of video in seconds"""
+    try:
+        with VideoFileClip(video_path) as video:
+            return video.duration
+    except:
+        return float('inf')  # Return infinity if there's an error reading the file
+
+def process_video(video_path, output_dir):
+    """Process a single video file and generate caption"""
+    try:
+        # Prepare conversation
+        conversation = [
+            system_prompt,
+            {
+                "role": "user",
+                "content": [
+                    {"type": "video", "video": video_path},
+                    {"type": "text", "text": "使用中文描述这个视频。"}
+                ],
+            },
+        ]
+        
+        # Prepare inputs
+        text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
+        audios, images, videos = process_mm_info(conversation, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+        inputs = processor(text=text, audio=audios, images=images, videos=videos, 
+                          return_tensors="pt", padding=True, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+        inputs = inputs.to(model.device).to(model.dtype)
+        
+        # Generate caption
+        text_ids = model.generate(**inputs, use_audio_in_video=USE_AUDIO_IN_VIDEO, return_audio=False)
+        text = processor.batch_decode(text_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+        
+        return text[0]
+    except Exception as e:
+        print(f"Error processing {video_path}: {str(e)}")
+        return None
+
+# Get all MP4 files
+print("Finding video files...")
+video_files = []
+for filename in tqdm(os.listdir(input_dir)):
+    if filename.lower().endswith('.mp4'):
+        filepath = os.path.join(input_dir, filename)
+        video_files.append((filename, filepath))
+
+print(f"Found {len(video_files)} potential videos")
+
+# Process each video with progress bar
+processed_count = 0
+for filename, filepath in tqdm(video_files, desc="Processing videos"):
+    # Check video duration first
+    duration = get_video_duration(filepath)
+    if duration > 30:
+        continue  # Skip videos longer than 30 seconds
+        
+    # Generate caption
+    caption = process_video(filepath, output_dir)
+    
+    if caption is not None:
+        # Copy video file to output directory
+        output_video_path = os.path.join(output_dir, filename)
+        shutil.copy2(filepath, output_video_path)
+        
+        # Save caption as text file
+        txt_filename = os.path.splitext(filename)[0] + '.txt'
+        txt_path = os.path.join(output_dir, txt_filename)
+        with open(txt_path, 'w', encoding='utf-8') as f:
+            f.write(caption)
+        
+        processed_count += 1
+
+print(f"Processing complete! Processed {processed_count} videos (≤30s) out of {len(video_files)} total files.")
+```
+
 
 # Qwen2.5-Omni
 <p align="left">
