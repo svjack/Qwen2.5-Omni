@@ -1,3 +1,79 @@
+```bash
+conda activate system
+sudo apt-get update && sudo apt-get install git-lfs cbm ffmpeg
+
+pip uninstall torch torchvision -y
+pip install torch==2.5.0 torchvision https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
+
+pip uninstall transformers
+pip install git+https://github.com/huggingface/transformers@v4.51.3-Qwen2.5-Omni-preview
+pip install accelerate
+
+pip install "qwen-omni-utils[decord]" -U
+
+pip install ipykernel
+python -m ipykernel install --user --name=system --display-name="system"
+
+wget https://huggingface.co/datasets/svjack/Toradora_Videos_Splited/resolve/main/Toradora!%20E01___001.mp4
+```
+
+```python
+import soundfile as sf
+import torch
+
+from transformers import Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor
+from qwen_omni_utils import process_mm_info
+
+# default: Load the model on the available device(s)
+#model = Qwen2_5OmniForConditionalGeneration.from_pretrained("Qwen/Qwen2.5-Omni-3B", torch_dtype="auto", device_map="auto")
+
+# We recommend enabling flash_attention_2 for better acceleration and memory saving.
+model = Qwen2_5OmniForConditionalGeneration.from_pretrained(
+     "Qwen/Qwen2.5-Omni-3B",
+     torch_dtype=torch.bfloat16,
+     device_map="auto",
+     attn_implementation="flash_attention_2",
+ )
+
+processor = Qwen2_5OmniProcessor.from_pretrained("Qwen/Qwen2.5-Omni-3B")
+
+conversation = [
+    {
+        "role": "system",
+        "content": [
+            {"type": "text", "text": "You are Qwen, a virtual human developed by the Qwen Team, Alibaba Group, capable of perceiving auditory and visual inputs, as well as generating text and speech."}
+        ],
+    },
+    {
+        "role": "user",
+        "content": [
+            {"type": "video", "video": "Toradora! E01___001.mp4"},
+            {"type": "text", "text": "使用中文描述这个视频，不要回复其他内容，也不要进行其他询问。"}
+        ],
+    },
+]
+
+# set use audio in video
+USE_AUDIO_IN_VIDEO = False
+
+# Preparation for inference
+text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
+audios, images, videos = process_mm_info(conversation, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+inputs = processor(text=text, audio=audios, images=images, videos=videos, return_tensors="pt", padding=True, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+inputs = inputs.to(model.device).to(model.dtype)
+
+# Inference: Generation of the output text and audio
+text_ids, audio = model.generate(**inputs, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+
+text = processor.batch_decode(text_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+print(text)
+sf.write(
+    "output.wav",
+    audio.reshape(-1).detach().cpu().numpy(),
+    samplerate=24000,
+)
+```
+
 # Qwen2.5-Omni
 <p align="left">
         <a href="README_CN.md">中文</a> &nbsp｜ &nbsp English&nbsp&nbsp
