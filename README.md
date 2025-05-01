@@ -17,6 +17,7 @@ python -m ipykernel install --user --name=system --display-name="system"
 wget https://huggingface.co/datasets/svjack/Toradora_Videos_Splited/resolve/main/Toradora!%20E01___001.mp4
 ```
 
+#### With Audio
 ```python
 import soundfile as sf
 import torch
@@ -73,6 +74,42 @@ sf.write(
     samplerate=24000,
 )
 ```
+
+### Without Audio
+```python
+conversation = [
+    {
+        "role": "system",
+        "content": [
+            {"type": "text", "text": "你是一个Video Captioner,根据我给你的视频生成对应的中文 Caption。不要回复其他内容，也不要进行其他询问。"}
+        ],
+    },
+    {
+        "role": "user",
+        "content": [
+            {"type": "video", "video": "Toradora! E01___001.mp4"},
+            {"type": "text", "text": "使用中文描述这个视频。"}
+        ],
+    },
+]
+
+# set use audio in video
+USE_AUDIO_IN_VIDEO = False
+
+# Preparation for inference
+text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
+audios, images, videos = process_mm_info(conversation, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+inputs = processor(text=text, audio=audios, images=images, videos=videos, return_tensors="pt", padding=True, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+inputs = inputs.to(model.device).to(model.dtype)
+
+# Inference: Generation of the output text and audio
+text_ids = model.generate(**inputs, use_audio_in_video=USE_AUDIO_IN_VIDEO, return_audio = False)
+
+text = processor.batch_decode(text_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+print(text)
+
+```
+
 
 # Qwen2.5-Omni
 <p align="left">
