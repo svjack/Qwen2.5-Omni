@@ -10,6 +10,7 @@ pip install git+https://github.com/huggingface/transformers@v4.51.3-Qwen2.5-Omni
 pip install accelerate
 
 pip install "qwen-omni-utils[decord]" -U
+pip install moviepy==1.0.3
 
 pip install ipykernel
 python -m ipykernel install --user --name=system --display-name="system"
