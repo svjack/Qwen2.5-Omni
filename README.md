@@ -224,6 +224,48 @@ for filename, filepath in tqdm(video_files, desc="Processing videos"):
         processed_count += 1
 
 print(f"Processing complete! Processed {processed_count} videos (≤30s) out of {len(video_files)} total files.")
+
+import os
+import shutil
+
+# Define paths
+source_dir = "Toradora_Videos_Omni_Captioned_PreProcess"
+target_dir = "Toradora_Videos_Omni_Captioned"
+
+# Create target directory if it doesn't exist
+os.makedirs(target_dir, exist_ok=True)
+
+# Iterate through files in source directory
+for filename in os.listdir(source_dir):
+    base_name, ext = os.path.splitext(filename)
+    
+    # Process .mp4 files (copy directly)
+    if ext.lower() == '.mp4':
+        src_path = os.path.join(source_dir, filename)
+        dst_path = os.path.join(target_dir, filename)
+        shutil.copy2(src_path, dst_path)
+        print(f"Copied: {filename}")
+    
+    # Process .txt files (modify content)
+    elif ext.lower() == '.txt':
+        src_path = os.path.join(source_dir, filename)
+        dst_path = os.path.join(target_dir, filename)
+        
+        # Read and process the text file
+        with open(src_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Apply the text processing
+        processed_content = content.split("assistant")[-1].strip()
+        
+        # Write the processed content to new file
+        with open(dst_path, 'w', encoding='utf-8') as f:
+            f.write(processed_content)
+        
+        print(f"Processed: {filename}")
+
+print("Operation completed successfully!")
+
 ```
 
 
