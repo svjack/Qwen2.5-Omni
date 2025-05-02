@@ -111,6 +111,52 @@ print(text)
 
 ```
 
+```python
+system_prompt = "你是一个专注于日本动漫的智能Caption生成器，请按以下要求制作中文视频描述：\n" + \
+                    "1. 【人物特征】精确描述：发色渐变/瞳孔纹样/服装细节（如『左肩破损的黑色学生制服』『闪烁星芒的碧绿蛇瞳』）\n" + \
+                    "2. 【景物特征】动态捕捉：天气变化（『雨滴在刀锋上碎裂』）、光影效果（『夕阳将和室拉出三道渐变阴影』）\n" + \
+                    "3. 【动作事件】逐帧解析：战斗动作（『太刀反手居合时刀鞘迸出火星』）、微表情变化（『说话时右眼不自然地抽搐』）\n" + \
+                    "4. 【分镜语言】技术标注：推镜头（『0.5秒内从全景急推到角色颤抖的指尖』）、鱼眼变形（『背景扭曲表现精神冲击』）\n" + \
+                    "5. 【美术风格】特征识别：" + \
+                    "- 赛璐璐：『边缘锐利的色块与高光』" + \
+                    "- 数字绘景：『多层景深合成的蒸汽都市』" + \
+                    "- 特殊效果：『爆衣时飞散的晶体化布料』\n" + \
+                    "6. 【单句描写】在300字以上完成包含3个以上动态细节的复合描写（如『紫绀色马尾辫随后空翻甩出虹彩残影，染血木屐踏碎水面时惊起十七枚银针状雨滴』）"
+
+print(system_prompt)
+
+conversation = [
+    {
+        "role": "system",
+        "content": [
+            {"type": "text", "text": system_prompt}
+        ],
+    },
+    {
+        "role": "user",
+        "content": [
+            {"type": "video", "video": "Toradora! E01___001.mp4"},
+            {"type": "text", "text": "使用中文描述这个视频。"}
+        ],
+    },
+]
+
+# set use audio in video
+USE_AUDIO_IN_VIDEO = False
+
+# Preparation for inference
+text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
+audios, images, videos = process_mm_info(conversation, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+inputs = processor(text=text, audio=audios, images=images, videos=videos, return_tensors="pt", padding=True, use_audio_in_video=USE_AUDIO_IN_VIDEO)
+inputs = inputs.to(model.device).to(model.dtype)
+
+# Inference: Generation of the output text and audio
+text_ids = model.generate(**inputs, use_audio_in_video=USE_AUDIO_IN_VIDEO, return_audio = False)
+
+text = processor.batch_decode(text_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+print(text)
+```
+
 ### Caption in Loop
 ```python
 #### git clone https://huggingface.co/datasets/svjack/Toradora_Videos_Splited
@@ -147,6 +193,24 @@ system_prompt = {
     "role": "system",
     "content": [
         {"type": "text", "text": "你是一个Video Captioner,根据我给你的视频生成对应的中文 Caption。不要回复其他内容，也不要进行其他询问。"}
+    ],
+}
+
+system_text = "你是一个专注于日本动漫的智能Caption生成器，请按以下要求制作中文视频描述：\n" + \
+                    "1. 【人物特征】精确描述：发色渐变/瞳孔纹样/服装细节（如『左肩破损的黑色学生制服』『闪烁星芒的碧绿蛇瞳』）\n" + \
+                    "2. 【景物特征】动态捕捉：天气变化（『雨滴在刀锋上碎裂』）、光影效果（『夕阳将和室拉出三道渐变阴影』）\n" + \
+                    "3. 【动作事件】逐帧解析：战斗动作（『太刀反手居合时刀鞘迸出火星』）、微表情变化（『说话时右眼不自然地抽搐』）\n" + \
+                    "4. 【分镜语言】技术标注：推镜头（『0.5秒内从全景急推到角色颤抖的指尖』）、鱼眼变形（『背景扭曲表现精神冲击』）\n" + \
+                    "5. 【美术风格】特征识别：" + \
+                    "- 赛璐璐：『边缘锐利的色块与高光』" + \
+                    "- 数字绘景：『多层景深合成的蒸汽都市』" + \
+                    "- 特殊效果：『爆衣时飞散的晶体化布料』\n" + \
+                    "6. 【单句描写】在300字以上完成包含3个以上动态细节的复合描写（如『紫绀色马尾辫随后空翻甩出虹彩残影，染血木屐踏碎水面时惊起十七枚银针状雨滴』）"
+
+system_prompt = {
+    "role": "system",
+    "content": [
+        {"type": "text", "text": system_text}
     ],
 }
 
