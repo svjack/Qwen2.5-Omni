@@ -189,12 +189,14 @@ processor = Qwen2_5OmniProcessor.from_pretrained("Qwen/Qwen2.5-Omni-3B")
 USE_AUDIO_IN_VIDEO = False
 
 # System prompt
+'''
 system_prompt = {
     "role": "system",
     "content": [
         {"type": "text", "text": "你是一个Video Captioner,根据我给你的视频生成对应的中文 Caption。不要回复其他内容，也不要进行其他询问。"}
     ],
 }
+'''
 
 system_text = "你是一个专注于日本动漫的智能Caption生成器，请按以下要求制作中文视频描述：\n" + \
                     "1. 【人物特征】精确描述：发色渐变/瞳孔纹样/服装细节（如『左肩破损的黑色学生制服』『闪烁星芒的碧绿蛇瞳』）\n" + \
